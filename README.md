@@ -1,18 +1,19 @@
-geo-paging-example
-==================
+Zero to App in 30 Minutes with Python and MongoDB
+=================================================
 
-Example of using MongoDB's new `minDistance` option for paging through geo results.
-Pages through search results for sidewalk cafés near your address.
+Build a Yelp-like app that finds New York City cafés and lets you rate them and
+comment on them. You'll see how rapidly a simple app can be built using open
+source tools and a public data set.
 
-(Café data from [NYC Open Data](https://data.cityofnewyork.us/Business/Sidewalk-Cafes/6k68-kc8u).)
+Café data from [NYC Open Data](https://data.cityofnewyork.us/Business/Sidewalk-Cafes/6k68-kc8u).
 
-Read my [blog post](http://emptysqua.re/blog/paging-geo-mongodb/) describing the technique.
+Adapted from
+[an example app I built](http://emptysqua.re/blog/paging-geo-mongodb/) to
+demonstrate MongoDB 2.6's new "minDistance" operator.
 
 Setup
 -----
-Install and run a local [MongoDB](http://www.mongodb.org/downloads) server, at least version 2.5.1.
-
-(Pre-2.5.1 MongoDB versions ignore `minDistance`, so this paging technique won't work with them.)
+Install and run a local [MongoDB](http://www.mongodb.org/downloads) server.
 
 Install the Python packages in `requirements.txt`.
 
@@ -27,5 +28,3 @@ About
 -----
 
 Author: A. Jesse Jiryu Davis
-
-Contributors: [Gianfranco Palumbo](https://github.com/gianpaj)

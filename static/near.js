@@ -35,7 +35,7 @@ $(function() {
         }
 
         $.ajax({
-            url: '/geopaging/results/json',
+            url: '/zero-to-app/results/json',
             type: 'post',
             contentType: 'application/json',
 

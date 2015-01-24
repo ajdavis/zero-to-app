@@ -1,14 +1,12 @@
 {% extends "base.html" %}
 
 {% block title %}
-Geo-Paging Example
+NYC Sidewalk Caf&eacute;s
 {% endblock %}
 
 {% block body %}
 <div class="container">
-    <h1>MongoDB Geospatial Paging Demo</h1>
-    <p class="lead">An example app for <code>geoNear</code> and <code>minDistance</code>.</p>
-    <p class="lead">Read my <a href="http://emptysqua.re/blog/paging-geo-mongodb/">blog post</a> describing the technique.</p>
+    <h1>NYC Sidewalk Caf&eacute;s</h1>
     <br>
     <form action="{{ url_for('address') }}" method="post" class="form-horizontal">
         <p>Enter a location. A Manhattan zipcode like "10009" works well.<br><br></p>
@@ -19,6 +17,6 @@ Geo-Paging Example
     <br>
     <p>I know of {{ n_cafes }} sidewalk caf&eacute;s in New York City
        thanks to the <a href="https://data.cityofnewyork.us/Business/Sidewalk-Cafes/6k68-kc8u">NYC Open Data project</a>.</p>
-    <p>Code on <a href="https://github.com/ajdavis/geo-paging-example">GitHub</a>.</p>
+    <p>Code on <a href="https://github.com/ajdavis/zero-to-app">GitHub</a>.</p>
 </div>
 {% endblock %}
