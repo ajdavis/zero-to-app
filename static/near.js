@@ -15,25 +15,10 @@ $(function() {
     var rows = [],
         map,
         mapMarkers = [],
-        mapInfoWindows = [],
-        pageNo = 1,
-        // Farthest row we've seen so far.
-        maxDistance = 0;
+        mapInfoWindows = [];
 
-    // Get at most 'num' rows from server, all at least 'maxDistance' away, and
-    // append to global 'rows'. Update global 'maxDistance'.
-    function getMoreRows(num, callback, errback) {
-        // Exclude known rows at the current maxDistance so we don't get
-        // dupes from server.
-        var skipIds = [];
-        for (
-            var i = rows.length - 1;
-            i >= 0 && rows[i].distance == maxDistance;
-            i--
-        ) {
-            skipIds.push(rows[i].id);
-        }
-
+    // Get at most 'num' rows from server and set to global 'rows'.
+    function getRows(num, callback, errback) {
         $.ajax({
             url: '/zero-to-app/results/json',
             type: 'post',
@@ -42,15 +27,9 @@ $(function() {
             data: JSON.stringify({
                 lat: window.pageData.lat,
                 lon: window.pageData.lon,
-                minDistance: maxDistance,
-                skipIds: skipIds,
                 num: num
             })
         }).success(function(data) {
-            if (data.results.length) {
-                maxDistance = data.stats.maxDistance;
-            }
-
             data.results.forEach(function(result) {
                 var obj = result.obj,
                     name = (
@@ -76,13 +55,9 @@ $(function() {
         }).error(errback);
     }
 
-    function getRowsShown() {
-        return rows.slice((pageNo - 1) * rowsPerPage, pageNo * rowsPerPage);
-    }
-
-    function updateTable(pagingDirection) {
+    function updateTable() {
         $('#results')
-            .html(resultTemplate({rows: getRowsShown()}))
+            .html(resultTemplate({rows: rows}))
             .find('tr').click(function() {
                 var rowId = $(this).attr('data-rowid');
 
@@ -97,53 +72,41 @@ $(function() {
                     }
                 }
             });
-
-        $('#page-number').html(pageNo.toString());
     }
 
-    function updateMap(pagingDirection, isReset) {
+    function updateMap() {
         clearMapPoints();
 
-        var rowsShown = getRowsShown();
-        addPointsToMap(rowsShown);
+        addPointsToMap(rows);
         var center = new google.maps.LatLng(window.pageData.lat, window.pageData.lon);
         map.setCenter(center);
-        zoomMapToFit(rowsShown, pagingDirection, isReset);
+        map.setZoom(14);
     }
 
-    // Redisplay the table and map. Get more rows from server if necessary.
-    // pagingDirection is 'next' or 'previous'.
-    function showPage(pageNo, pagingDirection, isReset, callback) {
+    // Display the table and map.
+    function showPage(callback) {
         function onRowsReady() {
-            updateTable(pagingDirection);
-            updateMap(pagingDirection, isReset);
+            updateTable();
+            updateMap();
             if (callback) callback();
         }
         
-        if (rows.length >= pageNo * rowsPerPage) {
-            // We have enough rows already.
-            onRowsReady();
-        } else {
-            getMoreRows(
-                rowsPerPage,
-                function() {
-                    // Success.
-                    onRowsReady();
-                },
-                function(jqXHR, textStatus, errorThrown) {
-                    // Failure.
-                    alert(errorThrown);
-                    if (callback) callback();
-                }
-            );
-        }
+        getRows(
+            rowsPerPage,
+            onRowsReady,
+            function(jqXHR, textStatus, errorThrown) {
+                // Failure.
+                alert(errorThrown);
+                if (callback) callback();
+            }
+        );
     }
 
     // Map stuff.
     function initializeMap() {
         var center = new google.maps.LatLng(window.pageData.lat, window.pageData.lon);
         var mapOptions = {
-            zoom: 16,
+            zoom: 14,
             center: center,
             mapTypeId: google.maps.MapTypeId.ROADMAP
         };
@@ -165,12 +128,7 @@ $(function() {
             window.pageData.lon = marker.getPosition().lng();
 
             rows = [];
-            maxDistance = 0;
-            pageNo = 1;
-
-            showPage(1, 'next', true, function() {
-                $previous.addClass('disabled');
-            });
+            showPage();
         });
     }
 
@@ -229,83 +187,5 @@ $(function() {
         });
     }
 
-    // points is a list of [lat, lon]. pagingDirection is 'next' or 'previous'.
-    function zoomMapToFit(rowsShown, pagingDirection, isReset) {
-        // Not ready?
-        if ( ! rowsShown.length || ! map.getBounds()) {
-            // Try later.
-            google.maps.event.addListenerOnce(map, 'idle', function(){
-                zoomMapToFit(rowsShown, pagingDirection, isReset);
-            });
-
-            return;
-        }
-
-        var latLngs = $.map(rowsShown, function(row) {
-            return new google.maps.LatLng(row.latlon[0], row.latlon[1]);
-        });
-
-        function fits() {
-            for (var i = 0; i < latLngs.length; ++i) {
-                if ( ! map.getBounds().contains(latLngs[i])) return false;
-            }
-
-            return true;
-        }
-
-        var zoom = map.getZoom(),
-            mapType = map.mapTypes[map.mapTypeId];
-
-        if (isReset) {
-            zoom = 16;
-            map.setZoom(zoom);
-        }
-
-        if (pagingDirection == 'next') {
-            // Zoom out.
-            while ( ! fits() && zoom >= 1) { map.setZoom(--zoom); }
-        } else {
-            // Zoom in.
-            while (fits() && zoom <= mapType.maxZoom) { map.setZoom(++zoom); }
-
-            // Don't zoom in too far.
-            map.setZoom(--zoom);
-        }
-    }
-
-    // Set up previous / next buttons.
-    var $previous = $('#previous'), $next = $('#next');
-
-    $previous.click(function() {
-        if (pageNo == 1) return false;
-
-        $next.addClass('disabled');
-        $previous.addClass('disabled');
-
-        showPage(--pageNo, 'previous', false, function() {
-            $next.removeClass('disabled');
-            if (pageNo > 1) $previous.removeClass('disabled');
-        });
-
-        return false;
-    });
-
-    $next.click(function() {
-        $next.addClass('disabled');
-        $previous.addClass('disabled');
-
-        showPage(++pageNo, 'next', false, function() {
-            $previous.removeClass('disabled');
-            $next.removeClass('disabled');
-        });
-
-        return false;
-    });
-
-    // Initial display.
-    $previous.addClass('disabled');
-    $next.addClass('disabled');
-    showPage(1, 'next', false, function() {
-        $next.removeClass('disabled');
-    });
+    showPage();
 });

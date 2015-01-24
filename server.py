@@ -1,12 +1,12 @@
 import urllib
-from math import isnan
 
-from bson import ObjectId, json_util
+from bson import json_util
 from flask import Flask, redirect, url_for, Response
 from flask import render_template
 from flask import request
 from pymongo import MongoClient
 from werkzeug.routing import NumberConverter
+
 
 db = MongoClient().test
 app = Flask(__name__, static_path='/zero-to-app/static')
@@ -51,32 +51,17 @@ def near(lat, lon):
 def results():
     request_data = request.get_json()
     num = int(request_data['num'])
-    skip_ids = [ObjectId(_id) for _id in request_data['skipIds']]
-    min_distance = float(request_data['minDistance'])
     lat = float(request_data['lat'])
     lon = float(request_data['lon'])
-
-    if skip_ids:
-        query = {'_id': {'$nin': skip_ids}}
-    else:
-        query = {}
 
     # NOTE: lon, lat order!!
     result = db.command(
         'geoNear', 'cafes',
         near={'type': 'Point', 'coordinates': [lon, lat]},
-        query=query,
         spherical=True,
-        num=num,
-        minDistance=min_distance
-    )
+        num=num)
 
-    # Special case: if no results, avgDistance is NaN.
-    if isnan(result['stats']['avgDistance']):
-        result['stats']['avgDistance'] = 0
-
-    return Response(
-        json_util.dumps(result, allow_nan=False), mimetype='application/json')
+    return Response(json_util.dumps(result), mimetype='application/json')
 
 
 @app.route('/zero-to-app/address', methods=['POST'])
