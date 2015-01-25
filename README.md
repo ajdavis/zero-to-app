@@ -17,7 +17,12 @@ Install and run a local [MongoDB](http://www.mongodb.org/downloads) server.
 
 Install the Python packages in `requirements.txt`.
 
-Run `python load_cafes.py` from the project directory.
+Load café data and index it:
+
+```
+mongoimport --drop --collection cafes sidewalk-cafes.csv
+mongo --eval "printjson(db.cafes.createIndex({location: '2dsphere'}))"
+```
 
 Run
 ---
