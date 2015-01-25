@@ -129,6 +129,9 @@ $(function() {
             lon = centerMarker.getPosition().lng();
             showPage();
         });
+
+        // Start.
+        $searchForm.submit();
     }
 
     google.maps.event.addDomListener(window, 'load', initializeMap);
@@ -188,21 +191,15 @@ $(function() {
 
     showPage();
     $searchForm.submit(function() {
-        $.ajax({
-            url: '/zero-to-app/address/json',
-            type: 'post',
-            contentType: 'application/json',
-            data: JSON.stringify({address: $('#address').val()})
-        }).success(function(data) {
-            lat = data.lat;
-            lon = data.lon;
+        var geocoder = new google.maps.Geocoder();
+        geocoder.geocode({address: $('#address').val()}, function(results) {
+            var loc = results[0].geometry.location;
+            lat = loc.lat();
+            lon = loc.lng();
             showPage();
-        }).error(errBack);
+        });
 
         return false;
     });
-
-    // Start.
-    $searchForm.submit();
 });
 
