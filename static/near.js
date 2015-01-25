@@ -3,7 +3,8 @@ $(function() {
     var rowsPerPage = 10;
 
     var resultTemplate = Handlebars.compile($('#result-template').html()),
-        infoWindowTemplate = Handlebars.compile($('#info-window-template').html());
+        infoWindowTemplate = Handlebars.compile($('#info-window-template').html()),
+        $searchForm = $('#search-form');
 
     Handlebars.registerHelper('distanceFormat', function(distance) {
         return distance.toFixed(0).toString();
@@ -12,24 +13,33 @@ $(function() {
     // GLOBAL STATE.
     // Rows are kept sorted by distance.
     // Each has id, seq, distance, name, latlon, and street.
-    var rows = [],
+    var lat = 0,
+        lon = 0,
+        rows = [],
         map,
         mapMarkers = [],
+        centerMarker,
         mapInfoWindows = [];
 
+    // Generic error handler.
+    function errBack(jqXHR, textStatus, errorThrown) {
+        // Failure.
+        alert(errorThrown);
+    }
+
     // Get at most 'num' rows from server and set to global 'rows'.
-    function getRows(num, callback, errback) {
+    function getRows(num, callback) {
         $.ajax({
             url: '/zero-to-app/results/json',
             type: 'post',
             contentType: 'application/json',
-
             data: JSON.stringify({
-                lat: window.pageData.lat,
-                lon: window.pageData.lon,
+                lat: lat,
+                lon: lon,
                 num: num
             })
         }).success(function(data) {
+            rows = [];
             data.results.forEach(function(result) {
                 var obj = result.obj,
                     name = (
@@ -52,7 +62,7 @@ $(function() {
 
             callback();
 
-        }).error(errback);
+        }).error(errBack);
     }
 
     function updateTable() {
@@ -76,35 +86,26 @@ $(function() {
 
     function updateMap() {
         clearMapPoints();
-
         addPointsToMap(rows);
-        var center = new google.maps.LatLng(window.pageData.lat, window.pageData.lon);
+        var center = new google.maps.LatLng(lat, lon);
+        centerMarker.setPosition(center);
         map.setCenter(center);
         map.setZoom(14);
     }
 
     // Display the table and map.
-    function showPage(callback) {
+    function showPage() {
         function onRowsReady() {
             updateTable();
             updateMap();
-            if (callback) callback();
         }
         
-        getRows(
-            rowsPerPage,
-            onRowsReady,
-            function(jqXHR, textStatus, errorThrown) {
-                // Failure.
-                alert(errorThrown);
-                if (callback) callback();
-            }
-        );
+        getRows(rowsPerPage, onRowsReady);
     }
 
     // Map stuff.
     function initializeMap() {
-        var center = new google.maps.LatLng(window.pageData.lat, window.pageData.lon);
+        var center = new google.maps.LatLng(lat, lon);
         var mapOptions = {
             zoom: 14,
             center: center,
@@ -116,18 +117,16 @@ $(function() {
             mapOptions);
 
         // Center point.
-        var marker = new google.maps.Marker({
+        centerMarker = new google.maps.Marker({
             map: map,
             draggable: true,
             animation: google.maps.Animation.DROP,
             position: center
         });
 
-        google.maps.event.addListener(marker, 'dragend', function() {
-            window.pageData.lat = marker.getPosition().lat();
-            window.pageData.lon = marker.getPosition().lng();
-
-            rows = [];
+        google.maps.event.addListener(centerMarker, 'dragend', function() {
+            lat = centerMarker.getPosition().lat();
+            lon = centerMarker.getPosition().lng();
             showPage();
         });
     }
@@ -188,4 +187,22 @@ $(function() {
     }
 
     showPage();
+    $searchForm.submit(function() {
+        $.ajax({
+            url: '/zero-to-app/address/json',
+            type: 'post',
+            contentType: 'application/json',
+            data: JSON.stringify({address: $('#address').val()})
+        }).success(function(data) {
+            lat = data.lat;
+            lon = data.lon;
+            showPage();
+        }).error(errBack);
+
+        return false;
+    });
+
+    // Start.
+    $searchForm.submit();
 });
+

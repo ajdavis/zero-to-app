@@ -1,29 +1,14 @@
 import urllib
 
 from bson import json_util
-from flask import Flask, redirect, url_for, Response
+from flask import Flask, Response
 from flask import render_template
 from flask import request
 from pymongo import MongoClient
-from werkzeug.routing import NumberConverter
 
 
 db = MongoClient().test
 app = Flask(__name__, static_path='/zero-to-app/static')
-
-
-# Accept more 'float' numbers than Werkzeug does by default: also accept
-# numbers beginning with minus, or with no trailing digits.
-# From https://gist.github.com/akhenakh/3376839
-class NegativeFloatConverter(NumberConverter):
-    regex = r'\-?\d+(\.\d+)?'
-    num_convert = float
-
-    def __init__(self, mapping, minimum=None, maximum=None):
-        NumberConverter.__init__(self, mapping, 0, minimum, maximum)
-
-
-app.url_map.converters['float'] = NegativeFloatConverter
 
 
 def address_to_lat_lon(addr):
@@ -40,11 +25,6 @@ def address_to_lat_lon(addr):
         center = center.replace('lat:', '').replace('lng:', '')
         lat, lng = center.split(',')
         return float(lat), float(lng)
-
-
-@app.route('/zero-to-app/near/<float:lat>/<float:lon>')
-def near(lat, lon):
-    return render_template('near.html', results=results, lat=lat, lon=lon)
 
 
 @app.route('/zero-to-app/results/json', methods=['POST'])
@@ -64,19 +44,18 @@ def results():
     return Response(json_util.dumps(result), mimetype='application/json')
 
 
-@app.route('/zero-to-app/address', methods=['POST'])
+@app.route('/zero-to-app/address/json', methods=['POST'])
 def address():
-    lat, lon = address_to_lat_lon(request.form.get('address'))
-    return redirect(url_for('near', lat=lat, lon=lon))
+    lat, lon = address_to_lat_lon(request.get_json()['address'])
+    return Response(json_util.dumps({'lat': lat, 'lon': lon}),
+                    mimetype='application/json')
 
 
 @app.route('/zero-to-app')
 def main():
-    n_cafes = db.cafes.count()
-    return render_template('main.html', n_cafes=n_cafes)
+    return render_template('index.html')
 
 
 if __name__ == '__main__':
     print('Go visit http://localhost:5000/zero-to-app')
     app.run(host='0.0.0.0', debug=True)
-
